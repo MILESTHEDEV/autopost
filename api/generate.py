@@ -3,6 +3,7 @@ import os
 import time
 from runwayml import RunwayML
 from flask import Flask, request, jsonify
+import base64
 
 app = Flask(__name__)
 
@@ -10,37 +11,57 @@ app = Flask(__name__)
 def modify_prompt(base_prompt):
     return f"{base_prompt}, detailed, vibrant, high resolution"
 
-# Step 2: Generate the image using Stability AI
+# Step 2: Generate the image using Stability AI Core
 def generate_image_stability(api_key, prompt):
     try:
-        print(f"Using API Key: {api_key}")  # Debugging line to check the API key
+        print(f"Using API Key: {api_key}")  # Debugging line
+        
         response = requests.post(
-            "https://api.stability.ai/v2beta/stable-image/generate/ultra",
+            "https://api.stability.ai/v1/generation/stable-diffusion-xl-1024-v1-0/text-to-image",
             headers={
-                "authorization": f"Bearer {api_key}",
-                "accept": "image/*",  # Expect an image as response
+                "Authorization": f"Bearer {api_key}",
+                "Accept": "application/json",
+                "Content-Type": "application/json"
             },
-            files={
-                "prompt": (None, prompt),
-                "output_format": (None, "webp"),  # Specify desired output format
-            },
+            json={
+                "text_prompts": [
+                    {
+                        "text": prompt,
+                        "weight": 1
+                    }
+                ],
+                "cfg_scale": 7,
+                "height": 1024,
+                "width": 1024,
+                "samples": 1,
+                "steps": 30,
+                "style_preset": "photographic"
+            }
         )
 
-        # Handle the response
         if response.status_code == 200:
-            # Save the image temporarily
-            temp_path = "/tmp/generated_image.webp"
-            with open(temp_path, "wb") as file:
-                file.write(response.content)
-            print(f"Image generated and saved temporarily")
+            # Get the base64 image from the response
+            data = response.json()
             
-            # Here you would typically upload this image to a cloud storage
-            # and return the URL. For now, we'll return the local path
-            return temp_path
+            # Save the first generated image
+            if data["artifacts"]:
+                image_data = base64.b64decode(data["artifacts"][0]["base64"])
+                
+                # Save to temporary file
+                temp_path = "/tmp/generated_image.png"
+                with open(temp_path, "wb") as f:
+                    f.write(image_data)
+                
+                print("Image generated successfully")
+                return temp_path
+            else:
+                print("No image data in response")
+                return None
         else:
             print(f"Failed to generate image: {response.status_code}")
-            print("Response content:", response.json())  # Print error details
+            print("Response content:", response.json())
             return None
+            
     except Exception as e:
         print(f"Error during image generation: {e}")
         return None
