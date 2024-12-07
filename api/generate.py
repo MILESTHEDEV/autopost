@@ -8,7 +8,6 @@ app = Flask(__name__)
 
 # Step 1: Modify the prompt for image generation
 def modify_prompt(base_prompt):
-    # Fallback prompt modification
     return f"{base_prompt}, detailed, vibrant, high resolution"
 
 # Step 2: Generate the image using Stability AI
@@ -18,21 +17,22 @@ def generate_image_stability(api_key, prompt):
             "https://api.stability.ai/v2beta/stable-image/generate/ultra",
             headers={
                 "authorization": f"Bearer {api_key}",
-                "accept": "image/*",
+                "accept": "application/json",  # Change to application/json to get a JSON response
             },
-            files={
-                "prompt": (None, prompt),
-                "output_format": (None, "webp"),
+            data={
+                "prompt": prompt,
+                "output_format": "webp",  # Specify desired output format
             },
         )
 
+        # Handle the response
         if response.status_code == 200:
             image_url = response.json().get('url')  # Get the image URL from the response
             print(f"Image generated and available at {image_url}")
             return image_url  # Return the image URL
         else:
             print(f"Failed to generate image: {response.status_code}")
-            print(response.json())
+            print(response.json())  # Print error details
             return None
     except Exception as e:
         print(f"Error during image generation: {e}")
@@ -51,7 +51,7 @@ def generate_video(runway_api_key, prompt_image_url):
     try:
         task = client.image_to_video.create(
             model=model,
-            prompt_image=prompt_image_url,
+            prompt_image=prompt_image_url,  # Use the image URL here
             prompt_text=prompt_text,
             duration=duration  # Set the duration
         )
@@ -86,7 +86,6 @@ def generate_video(runway_api_key, prompt_image_url):
 def generate():
     data = request.json
     base_prompt = data.get('base_prompt')
-    # Skip Llama question and directly modify the prompt
     modified_prompt = modify_prompt(base_prompt)
 
     # Generate the image

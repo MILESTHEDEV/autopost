@@ -5,6 +5,81 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Image to Video Generator</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        label {
+            display: block;
+            margin-bottom: 10px;
+            font-weight: bold;
+        }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background-color: #28a745;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #result {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .output {
+            margin: 20px 0;
+            padding: 10px;
+            background: #fff;
+            border-radius: 5px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+
+        video {
+            max-width: 100%;
+            height: auto;
+            border-radius: 5px;
+        }
+    </style>
 </head>
 
 <body>
@@ -12,12 +87,6 @@
     <form id="generateForm">
         <label for="basePrompt">Base Prompt:</label>
         <input type="text" id="basePrompt" name="basePrompt" required>
-        <br>
-        <label for="useLlama">Use Llama 2 for text generation?</label>
-        <select id="useLlama" name="useLlama">
-            <option value="no">No</option>
-            <option value="yes">Yes</option>
-        </select>
         <br>
         <button type="submit">Generate</button>
     </form>
@@ -27,21 +96,35 @@
         document.getElementById('generateForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const basePrompt = document.getElementById('basePrompt').value;
-            const useLlama = document.getElementById('useLlama').value;
 
             const response = await fetch('/api/generate', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({ base_prompt: basePrompt, use_llama: useLlama }),
+                body: JSON.stringify({ base_prompt: basePrompt }),
             });
 
             const result = await response.json();
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = ''; // Clear previous results
+
             if (response.ok) {
-                document.getElementById('result').innerText = `Image URL: ${result.image_url}\nVideo URL: ${result.video_url}`;
+                resultDiv.innerHTML = `
+                    <div class="output">
+                        <h2>Generated Image:</h2>
+                        <img src="${result.image_url}" alt="Generated Image">
+                    </div>
+                    <div class="output">
+                        <h2>Generated Video:</h2>
+                        <video controls>
+                            <source src="${result.video_url}" type="video/mp4">
+                            Your browser does not support the video tag.
+                        </video>
+                    </div>
+                `;
             } else {
-                document.getElementById('result').innerText = `Error: ${result.error}`;
+                resultDiv.innerHTML = `<p>Error: ${result.error}</p>`;
             }
         });
     </script>
