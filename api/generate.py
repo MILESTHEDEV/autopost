@@ -3,12 +3,8 @@ import os
 import time
 from runwayml import RunwayML
 from flask import Flask, request, jsonify
-from dotenv import load_dotenv
 
 app = Flask(__name__)
-
-# Load environment variables from .env file
-load_dotenv()
 
 # Step 1: Modify the prompt for image generation
 def modify_prompt(base_prompt):
@@ -93,13 +89,19 @@ def generate():
     base_prompt = data.get('base_prompt')
     modified_prompt = modify_prompt(base_prompt)
 
+    # Get API keys from environment variables
+    stability_api_key = os.environ.get("STABILITY_API_KEY")
+    runway_api_key = os.environ.get("RUNWAY_API_KEY")
+
+    # Debug print statements
+    print("Stability API Key:", "Present" if stability_api_key else "Missing")
+    print("Runway API Key:", "Present" if runway_api_key else "Missing")
+
     # Generate the image
-    api_key = os.getenv("STABILITY_API_KEY")
-    image_url = generate_image_stability(api_key, modified_prompt)
+    image_url = generate_image_stability(stability_api_key, modified_prompt)
 
     # Generate video if image generation is successful
     if image_url:
-        runway_api_key = os.getenv("RUNWAY_API_KEY")
         video_url = generate_video(runway_api_key, image_url)  # Pass the image URL to video generation
         return jsonify({"image_url": image_url, "video_url": video_url})
     else:
