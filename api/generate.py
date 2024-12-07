@@ -17,11 +17,11 @@ def generate_image_stability(api_key, prompt):
             "https://api.stability.ai/v2beta/stable-image/generate/ultra",
             headers={
                 "authorization": f"Bearer {api_key}",
-                "accept": "application/json",  # Change to application/json to get a JSON response
+                "accept": "image/jpeg",  # Set to receive JPEG images
             },
             data={
                 "prompt": prompt,
-                "output_format": "webp",  # Specify desired output format
+                "output_format": "jpeg",  # Specify JPEG as the output format
             },
         )
 
