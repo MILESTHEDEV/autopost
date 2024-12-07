@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image to Video Generator</title>
+</head>
+
+<body>
+    <h1>Image to Video Generator</h1>
+    <form id="generateForm">
+        <label for="basePrompt">Base Prompt:</label>
+        <input type="text" id="basePrompt" name="basePrompt" required>
+        <br>
+        <label for="useLlama">Use Llama 2 for text generation?</label>
+        <select id="useLlama" name="useLlama">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+        </select>
+        <br>
+        <button type="submit">Generate</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('generateForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const basePrompt = document.getElementById('basePrompt').value;
+            const useLlama = document.getElementById('useLlama').value;
+
+            const response = await fetch('/api/generate', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ base_prompt: basePrompt, use_llama: useLlama }),
+            });
+
+            const result = await response.json();
+            if (response.ok) {
+                document.getElementById('result').innerText = `Image URL: ${result.image_url}\nVideo URL: ${result.video_url}`;
+            } else {
+                document.getElementById('result').innerText = `Error: ${result.error}`;
+            }
+        });
+    </script>
+</body>
+
+</html>
