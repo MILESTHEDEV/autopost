@@ -8,6 +8,7 @@ app = Flask(__name__)
 
 # Step 1: Modify the prompt for image generation
 def modify_prompt(base_prompt):
+    # Fallback prompt modification
     return f"{base_prompt}, detailed, vibrant, high resolution"
 
 # Step 2: Generate the image using Stability AI
@@ -17,24 +18,21 @@ def generate_image_stability(api_key, prompt):
             "https://api.stability.ai/v2beta/stable-image/generate/ultra",
             headers={
                 "authorization": f"Bearer {api_key}",
-                "accept": "image/*",  # Expect an image as a response
+                "accept": "image/*",
             },
             files={
-                "prompt": (None, prompt),  # Send the prompt as a file
-                "output_format": (None, "webp"),  # Specify desired output format
+                "prompt": (None, prompt),
+                "output_format": (None, "webp"),
             },
         )
 
-        # Handle the response
         if response.status_code == 200:
-            # Save the image to a file
-            with open("./lighthouse.webp", "wb") as file:
-                file.write(response.content)
-            print("Image generated and saved as lighthouse.webp")
-            return "./lighthouse.webp"  # Return the path to the saved image
+            image_url = response.json().get('url')  # Get the image URL from the response
+            print(f"Image generated and available at {image_url}")
+            return image_url  # Return the image URL
         else:
             print(f"Failed to generate image: {response.status_code}")
-            print(response.json())  # Print error details
+            print(response.json())
             return None
     except Exception as e:
         print(f"Error during image generation: {e}")
@@ -88,6 +86,7 @@ def generate_video(runway_api_key, prompt_image_url):
 def generate():
     data = request.json
     base_prompt = data.get('base_prompt')
+    # Skip Llama question and directly modify the prompt
     modified_prompt = modify_prompt(base_prompt)
 
     # Generate the image
