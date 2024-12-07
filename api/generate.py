@@ -18,19 +18,25 @@ def generate_image_stability(api_key, prompt):
             "https://api.stability.ai/v2beta/stable-image/generate/ultra",
             headers={
                 "authorization": f"Bearer {api_key}",
-                "accept": "image/*"  # Set to receive any image format
+                "accept": "image/*",  # Expect an image as response
             },
             files={
-                "prompt": (None, prompt),  # Send the prompt as a file
-                "output_format": (None, "jpeg"),  # Specify JPEG as the output format
+                "prompt": (None, prompt),
+                "output_format": (None, "webp"),  # Specify desired output format
             },
         )
 
         # Handle the response
         if response.status_code == 200:
-            image_url = response.json().get('url')  # Get the image URL from the response
-            print(f"Image generated and available at {image_url}")
-            return image_url  # Return the image URL
+            # Save the image temporarily
+            temp_path = "/tmp/generated_image.webp"
+            with open(temp_path, "wb") as file:
+                file.write(response.content)
+            print(f"Image generated and saved temporarily")
+            
+            # Here you would typically upload this image to a cloud storage
+            # and return the URL. For now, we'll return the local path
+            return temp_path
         else:
             print(f"Failed to generate image: {response.status_code}")
             print("Response content:", response.json())  # Print error details
@@ -40,29 +46,26 @@ def generate_image_stability(api_key, prompt):
         return None
 
 # Step 4: Generate video from the image using Runway Gen-3 API
-def generate_video(runway_api_key, prompt_image_url):
-    client = RunwayML(api_key=runway_api_key)  # Initialize the RunwayML client
+def generate_video(runway_api_key, image_path):
+    client = RunwayML(api_key=runway_api_key)
 
-    # Specify the model and inputs
-    model = "gen3a_turbo"
-    prompt_text = "The bunny is eating a carrot"  # Describe your video content
-    duration = 5  # Video duration in seconds (accepted values: 5 or 10)
-
-    # Create a video generation task
     try:
-        task = client.image_to_video.create(
-            model=model,
-            prompt_image=prompt_image_url,  # Use the image URL here
-            prompt_text=prompt_text,
-            duration=duration  # Set the duration
-        )
+        # Read the image file
+        with open(image_path, 'rb') as image_file:
+            # Create a video generation task
+            task = client.image_to_video.create(
+                model="gen3a_turbo",
+                prompt_image=image_file,
+                prompt_text="Transform this image into a dynamic scene",
+                duration=5
+            )
+            
         print(f"Task started successfully. Task ID: {task.id}")
 
         # Polling for task status
         while True:
-            time.sleep(5)  # Wait for 5 seconds before checking the status
+            time.sleep(5)
             task_status = client.tasks.retrieve(id=task.id)
-            
             print(f"Current status: {task_status.status}")
             
             if task_status.status in ["SUCCEEDED", "FAILED", "CANCELLED"]:
@@ -70,42 +73,54 @@ def generate_video(runway_api_key, prompt_image_url):
         
         if task_status.status == "SUCCEEDED":
             print("Video generation succeeded!")
-            return task_status.output  # Return the output URLs
-        elif task_status.status == "FAILED":
-            print("Video generation failed.")
-            print("Failure reason:", task_status.failure)
-            return None
+            return task_status.output
         else:
-            print("Video generation was cancelled.")
+            print("Video generation failed or was cancelled.")
+            print("Status:", task_status.status)
             return None
 
     except Exception as e:
-        print(f"Error creating task: {e}")
+        print(f"Error creating video task: {e}")
         return None
 
 @app.route('/api/generate', methods=['POST'])
 def generate():
-    data = request.json
-    base_prompt = data.get('base_prompt')
-    modified_prompt = modify_prompt(base_prompt)
+    try:
+        data = request.json
+        base_prompt = data.get('base_prompt')
+        modified_prompt = modify_prompt(base_prompt)
 
-    # Get API keys from environment variables
-    stability_api_key = os.environ.get("STABILITY_API_KEY")
-    runway_api_key = os.environ.get("RUNWAY_API_KEY")
+        # Get API keys from environment variables
+        stability_api_key = os.environ.get("STABILITY_API_KEY")
+        if not stability_api_key:
+            stability_api_key = "sk-MzpLjHNnkypPMHzoAaEcER5k57t1Tfc34YKOW2cIN2MwMjIf"  # Fallback API key
+        
+        runway_api_key = os.environ.get("RUNWAY_API_KEY")
+        
+        # Generate the image
+        image_path = generate_image_stability(stability_api_key, modified_prompt)
 
-    # Debug print statements
-    print("Stability API Key:", "Present" if stability_api_key else "Missing")
-    print("Runway API Key:", "Present" if runway_api_key else "Missing")
+        if not image_path:
+            return jsonify({"error": "Image generation failed"}), 500
 
-    # Generate the image
-    image_url = generate_image_stability(stability_api_key, modified_prompt)
+        # Generate video if image generation is successful
+        video_url = generate_video(runway_api_key, image_path)
+        
+        # Clean up the temporary file
+        if os.path.exists(image_path):
+            os.remove(image_path)
 
-    # Generate video if image generation is successful
-    if image_url:
-        video_url = generate_video(runway_api_key, image_url)  # Pass the image URL to video generation
-        return jsonify({"image_url": image_url, "video_url": video_url})
-    else:
-        return jsonify({"error": "Image generation failed."}), 500
+        if video_url:
+            return jsonify({
+                "image_path": image_path,
+                "video_url": video_url
+            })
+        else:
+            return jsonify({"error": "Video generation failed"}), 500
+
+    except Exception as e:
+        print(f"Error in generate endpoint: {e}")
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run()
+    app.run(debug=True)
