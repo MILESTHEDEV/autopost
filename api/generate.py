@@ -18,7 +18,6 @@ def modify_prompt(base_prompt):
 def generate_image_stability(api_key, prompt):
     try:
         print(f"Using API Key: {api_key}")  # Debugging line to check the API key
-        print("STABILITY_API_KEY:", os.getenv("STABILITY_API_KEY"))
         response = requests.post(
             "https://api.stability.ai/v2beta/stable-image/generate/ultra",
             headers={
