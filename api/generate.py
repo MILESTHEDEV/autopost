@@ -17,11 +17,11 @@ def generate_image_stability(api_key, prompt):
             "https://api.stability.ai/v2beta/stable-image/generate/ultra",
             headers={
                 "authorization": f"Bearer {api_key}",
-                "accept": "image/jpeg",  # Set to receive JPEG images
+                "accept": "image/*",  # Set to receive any image format
             },
-            data={
-                "prompt": prompt,
-                "output_format": "jpeg",  # Specify JPEG as the output format
+            files={
+                "prompt": (None, prompt),  # Send the prompt as a file
+                "output_format": (None, "jpeg"),  # Specify JPEG as the output format
             },
         )
 
@@ -32,7 +32,7 @@ def generate_image_stability(api_key, prompt):
             return image_url  # Return the image URL
         else:
             print(f"Failed to generate image: {response.status_code}")
-            print(response.json())  # Print error details
+            print("Response content:", response.json())  # Print the full response content for debugging
             return None
     except Exception as e:
         print(f"Error during image generation: {e}")
